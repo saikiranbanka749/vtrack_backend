@@ -1,3 +1,4 @@
+// File: routes/SkillSetInfo.js
 const express = require('express');
 const postgressqlConnection = require('../databasepg');
 const router = express.Router();
@@ -19,50 +20,48 @@ const upload = multer({ storage: storage });
 // Ensure body-parser is used for parsing JSON bodies
 router.use(express.json());
 
-router.post("/skillSetInfo-employeePortal", upload.single('resume'), async function (req, res, next) {
+router.post("/skill_Set_form", upload.single("resume"), async (req, res, next) => {
     try {
+        const client = await postgressqlConnection();
         const data = req.body;
-        console.log("Received data:", data);
-        
-        const connection = await postgressqlConnection();
-        if (!connection) {
-            throw new Error("Failed to connect to the database");
-        }
+        const fileName = req.file ? req.file.filename : null;
 
-        const photoPath = req.file.filename;
+        console.log("Data::::==>", data);
 
         const query = `
-            INSERT INTO emp_skillSetForm (id, skill_set, previous_exp, resume, certifications)
-            VALUES ($1, $2, $3, $4, $5)
-        `;
-        
-        const values = [data.id, data.skill_set, data.previous_exp, photoPath, data.certifications];
-        const result = await connection.query(query, values);
-        
-        res.status(200).json({ message: "Data added successfully", response: result });
+            INSERT INTO skill_set_form(emp_id, skill_set, previous_exp, resume, certifications) 
+            VALUES ($1, $2, $3, $4, $5) 
+            RETURNING *`; // Add RETURNING * to get the inserted row
+
+        const queryParams = [data.emp_id, data.skill_set, data.previous_exp, fileName, data.certifications];
+        const result = await client.query(query, queryParams);
+
+        if (result.rowCount > 0) {
+            res.status(200).json({ message: "Data inserted successfully", data: result.rows });
+        } else {
+            res.status(404).json({ message: "No data found" });
+        }
     } catch (e) {
-        console.error("Error occurred:", e.message);
-        res.status(500).json({ message: "An error occurred", error: e.message });
+        res.status(500).json({ message: "Internal server error" });
+        console.log(e);
     }
 });
 
-router.get("/getSingleRow-employeePortal", async function(req, res, next) {
+router.get("/get_skill_set_data", async (req, res, next) => {
     try {
-        const { id } = req.query; // Destructuring to get 'id' from 'req.query'
-        console.log(req.query);
-
-        const connection = await postgressqlConnection();
-
-        // Using parameterized query to prevent SQL injection
-        const query = 'SELECT * FROM emp_skillsetForm WHERE id = $1';
-        const values = [id];
-        const result = await connection.query(query, values);
-
-        res.status(200).json({ message: "Data fetched successfully", result: result.rows });
-        
-        await connection.end();
+        const client = await postgressqlConnection();
+        const emp_id = req.query.emp_id;
+        console.log(emp_id);
+        const query = `SELECT * FROM skill_set_form WHERE emp_id=$1`;
+        const queryParams = [emp_id];
+        const result = await client.query(query, queryParams);
+        if (result.rowCount > 0) {
+            res.status(200).json({ message: "Data fetched successfully", data: result.rows });
+        } else {
+            res.status(404).json("No data found");
+        }
     } catch (e) {
-        res.status(500).json({ message: "Internal server error" });
+        res.status(500).json("Internal server error");
         console.log(e);
     }
 });

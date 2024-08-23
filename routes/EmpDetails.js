@@ -5,9 +5,49 @@ const multer = require('multer');
 const path= require("path");
 const fs = require('fs');
 const jwt = require('jsonwebtoken');
+const crypto = require('crypto');
+const bodyParser = require('body-parser');
+
+// const app = express();
+// app.use(bodyParser.json());
 
 
-const secretKey = 'your_secret_key';
+// const sharedVector = Buffer.from([0x01, 0x02, 0x03, 0x05, 0x07, 0x0B, 0x0D, 0x11]);
+
+// function decrypt(encText) {
+//   const key = 'vensaiVtrack';
+//   const md5 = crypto.createHash('md5');
+//   md5.update(key, 'utf-8');
+//   const keyBuffer = Buffer.alloc(24, md5.digest('hex'), 'hex');
+//   const decipher = crypto.createDecipheriv('des-ede3-cbc', keyBuffer, sharedVector);
+//   let decrypted = decipher.update(encText, 'base64', 'utf-8');
+//   decrypted += decipher.final('utf-8');
+//   return decrypted;
+// }
+
+// router.get('/get-employeePortal', async (req, res) => {
+//   try {
+//     const { emp_id } = req.query;
+//     const result = await pool.query('SELECT emp_password FROM employeePortal WHERE emp_id = $1', [emp_id]);
+
+//     if (result.rows.length === 0) {
+//       return res.status(404).json({ msg: 'No data found for the given emp_id' });
+//     }
+
+//     const encryptedPassword = result.rows[0].emp_password;
+//     const decryptedPassword = decrypt(encryptedPassword);
+//     res.status(200).json({ msg: 'Data fetched successfully...', data: decryptedPassword });
+//   } catch (error) {
+//     console.error('Error fetching data:', error);
+//     res.status(500).json({ error: 'An error occurred while fetching data' });
+//   }
+// });
+
+
+
+
+
+
 
 router.post("/login-employeePortal", async (req, res, next) => {
     const client = await postgressqlConnection();
@@ -35,6 +75,7 @@ router.post("/login-employeePortal", async (req, res, next) => {
     }
 });
 
+const secretKey = 'your_secret_key';
 
 
 const storage = multer.diskStorage({
@@ -285,6 +326,27 @@ router.get('/get-employeePortal', async function(req, res, next) {
         res.status(500).json({ error: "An error occurred while fetching data" });
     } 
 });
+
+router.get('/get-employeePortal', async function(req, res, next) {
+    try {
+        const emp_id = req.query.emp_id; // Remove any quotes from the query parameter
+        console.log(":::", emp_id);
+
+        const client = await postgressqlConnection();
+        const query = `SELECT * FROM employeePortal WHERE emp_id = $1`;
+        const result = await client.query(query, [emp_id]);
+
+        if (result.rows.length === 0) {
+            return res.status(404).json({ msg: "No data found for the given emp_id" });
+        }
+
+        res.status(200).json({ msg: "Data fetched successfully...", data: result.rows });
+    } catch (error) {
+        console.error("Error fetching data:", error);
+        res.status(500).json({ error: "An error occurred while fetching data" });
+    }
+});
+
 
 router.put("/confirmPwd-employeePortal", async function(req, res, next) {
     const client = await postgressqlConnection();
